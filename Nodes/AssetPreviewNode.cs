@@ -2,7 +2,6 @@ using GraphProcessor;
 using TerrainMixture.Authoring;
 using UnityEditor;
 using UnityEngine;
-using UnityEngine.Serialization;
 
 namespace Mixture
 {
@@ -10,7 +9,7 @@ namespace Mixture
 	public class AssetPreviewNode<T> : MixtureNode, ICreateNodeFrom<T>
 		where T : Object, IHasPrototypePrefab, IHasPrototypeTexture
 	{
-		[ShowInInspector] public T template;
+		[HideInInspector] public T template;
 
 		public override Texture previewTexture => PreviewRT;
 

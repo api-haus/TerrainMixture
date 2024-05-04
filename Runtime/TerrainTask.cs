@@ -116,7 +116,7 @@ namespace TerrainMixture.Runtime
 
 				OnNextStep("Trees...");
 				yield return TerrainData.UploadTreeInstances(TaskController, treeOutput.TreeInstancesBuffer,
-					treeOutput.SafeMaxSplatCount, treeLayer++);
+					treeOutput.LiveInstancesCount, treeLayer++);
 			}
 
 			var detailLayer = 0;

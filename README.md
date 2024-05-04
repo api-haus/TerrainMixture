@@ -30,10 +30,15 @@ Additionally, Compute Buffer support allows for placing Tree Instances.
     * [x] Tree Instances via Trees Output Node
 * [x] Background Terrain sync with configurable amount of Runtime Skipped Frames.
 * [ ] Runtime Tile-based "endless" setup.
+* [ ] NavMeshes.
 * [x] In-Editor setup with realtime previews (using Editor Coroutines).
 * [ ] Biome Blending.
 * [ ] Stamps.
-* [ ] Scene Capture feature, rendering Terrain Objects to Texture Masks.
+* [ ] Scene Capture feature, projecting Terrain Objects and other Geometry into Texture Masks.
+* [ ] Usability Improvements.
+    * [ ] Node Consistency Validations w/ Messages.
+    * [ ] Better Node UI's.
+    * [ ] 
 
 ## Usage.
 
@@ -47,3 +52,13 @@ Additionally, Compute Buffer support allows for placing Tree Instances.
     * Assign Graph property to your graph created in step 1.
     * Assign Terrain property to your Terrain.
     * Terrain Mixture will react to runtime changes in Graph and update Terrain accordingly.
+
+### Terrain Mixture Graph
+
+Comes with pre-defined parameters which are mandatory and I forbid to delete those:
+
+* Seed (42)
+* Terrain Dimensions (1000)
+* Terrain Height (300)
+* World Scale (3000)
+* World Offset (0,0,0)

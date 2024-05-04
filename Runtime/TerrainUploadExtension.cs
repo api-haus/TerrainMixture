@@ -82,6 +82,7 @@ namespace TerrainMixture.Runtime
 		public static IEnumerator UploadTreeInstances(this TerrainData terrainData, TaskController taskController,
 			ComputeBuffer treeInstancesBuffer, int maxPoints, int layer)
 		{
+			if (maxPoints == 0) yield break;
 			var treeSubtask =
 				new TerrainTreeStream(taskController, terrainData, treeInstancesBuffer, maxPoints,
 					layer);

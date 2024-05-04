@@ -45,8 +45,8 @@ Sample tree positions from density texture.
 
 		[Output] public ComputeBuffer resultingPositions;
 
-		[FormerlySerializedAs("maxSplatCount")] [ShowInInspector]
-		public int maxInstanceCount = 256;
+		[FormerlySerializedAs("maxSplatCount")] [ShowInInspector] [SerializeField]
+		private int maxInstanceCount = 256;
 
 		// Grid
 		[Range(0, 2)] public float lambda = 0;
@@ -73,9 +73,32 @@ Sample tree positions from density texture.
 
 		int GeneratePointKernel;
 
+		static int LessOrEqualPot(int n)
+		{
+			int res = 0;
+			for (int i = n; i >= 1; i--)
+			{
+				// If i is a power of 2
+				if ((i & (i - 1)) == 0)
+				{
+					res = i;
+					break;
+				}
+			}
+
+			return res;
+		}
+
 		public int SafeMaxSplatCount =>
 			Mathf.Max(
-				8, Mathf.Min((int)(SystemInfo.maxGraphicsBufferSize / TreeInstanceNative.Stride), maxInstanceCount));
+				8,
+				Mathf.Min(LessOrEqualPot((int)(SystemInfo.maxGraphicsBufferSize / TreeInstanceNative.Stride / 2)),
+					Mathf.ClosestPowerOfTwo(maxInstanceCount)));
+
+		public int LiveInstancesCount =>
+			TreeInstancesBuffer != null && TreeInstancesBuffer.IsValid()
+				? TreeInstancesBuffer.count
+				: 0;
 
 		// ReSharper disable InconsistentNaming
 		static readonly int _TreeInstances = Shader.PropertyToID("_TreeInstances");
@@ -100,6 +123,8 @@ Sample tree positions from density texture.
 
 		protected override void Enable()
 		{
+			Disable();
+
 			// Debug.Log("0. T.Enable()");
 
 			base.Enable();

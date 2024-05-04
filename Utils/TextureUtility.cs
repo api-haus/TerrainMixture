@@ -12,7 +12,7 @@ namespace TerrainMixture.Utils
 			return tex2D;
 		}
 
-		public static Texture2D SyncReadback(RenderTexture source, TextureFormat format, bool linear = false)
+		public static Texture2D SyncReadback(RenderTexture source, TextureFormat format, bool linear = true)
 		{
 			var ct = RenderTexture.active;
 			RenderTexture.active = source;
@@ -29,7 +29,7 @@ namespace TerrainMixture.Utils
 
 		public static RenderTexture ToTemporaryRT(Texture from, int resolution, RenderTextureFormat format)
 		{
-			var rt = RenderTexture.GetTemporary(resolution, resolution, 0, format, RenderTextureReadWrite.sRGB);
+			var rt = RenderTexture.GetTemporary(resolution, resolution, 0, format);
 			Graphics.Blit(from, rt);
 			return rt;
 		}

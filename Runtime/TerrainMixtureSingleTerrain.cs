@@ -31,7 +31,7 @@ namespace TerrainMixture.Runtime
 #if UNITY_EDITOR
 		void LateUpdate()
 		{
-			if (Application.isPlaying) return;
+			// if (Application.isPlaying) return;
 			if (isDirty)
 			{
 				EditorCoroutineUtility.StartCoroutine(DebounceUpdate(Guid.NewGuid()), this);

@@ -14,6 +14,7 @@ namespace TerrainMixture.Runtime.Streams
 {
 	public class TerrainTreeStream : ProgressiveTask
 	{
+		// Not possible to change until we refactor how the buffer disposed on tree output node
 		const bool DoSyncReadbacks = true;
 		const bool SnapToHeightmap = false;
 

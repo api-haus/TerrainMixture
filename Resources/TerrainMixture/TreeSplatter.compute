@@ -151,7 +151,6 @@ void GenerateSplatPoints(uint id : SV_DispatchThreadID)
         return;
 
     uint position1D = id;
-    _TreeInstances[id].id = id + 1;
     _TreeInstances[id].scale = 1;
 
     R2(id, position1D);
@@ -163,4 +162,9 @@ void GenerateSplatPoints(uint id : SV_DispatchThreadID)
     _TreeInstances[id].position += JitterPositionXZ(id);
     _TreeInstances[id].position = NormalizeToBounds(_TreeInstances[id].position);
     _TreeInstances[id].position += JitterPositionY(id);
+
+    float maxDensityAtPosition = _DensityMask[_TreeInstances[id].position.xz * _DensityMaskResolution].r;
+    float rngDensity = WhiteNoise1(id + 420);
+
+    _TreeInstances[id].id = rngDensity <= maxDensityAtPosition ? id + 1 : 0;
 }
