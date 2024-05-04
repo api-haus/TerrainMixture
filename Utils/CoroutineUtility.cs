@@ -8,10 +8,29 @@ namespace TerrainMixture.Utils
 {
 	public static class CoroutineUtility
 	{
-		public static IEnumerator WaitForSeconds(float time)
+		public static bool FrameSkip(ref float time, int maxFrameSkip = 4)
 		{
+			var sinceLastFrameSkip = Time.realtimeSinceStartup - time;
+			var isLate = sinceLastFrameSkip >= maxFrameSkip * Time.fixedDeltaTime;
+
+			if (isLate)
+			{
+				time = Time.realtimeSinceStartup;
+			}
+
+			return isLate;
+		}
+
+		public static IEnumerator WaitForSeconds(float time, bool forceEditorCoroutine = false)
+		{
+#if UNITY_EDITOR
+			if (forceEditorCoroutine)
+			{
+				yield return new EditorWaitForSeconds(time);
+				yield break;
+			}
+#endif
 			yield return new WaitForSeconds(time);
-// #if UNITY_EDITOR
 // 			if (!Application.isPlaying)
 // 			{
 // 				yield return new EditorWaitForSeconds(time);

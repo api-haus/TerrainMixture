@@ -1,0 +1,23 @@
+{
+  "name": "api.haus.TerrainMixture.Editor",
+  "rootNamespace": "TerrainMixture.Editor",
+  "references": [
+    "Mixture.Runtime",
+    "com.alelievr.NodeGraphProcessor.Editor",
+    "com.alelievr.NodeGraphProcessor.Runtime",
+    "Unity.ShaderGraph.GraphicsTests",
+    "api.haus.TerrainMixture.Utils",
+    "api.haus.TerrainMixture.Nodes",
+    "api.haus.TerrainMixture.Authoring",
+    "Unity.EditorCoroutines.Editor"
+  ],
+  "includePlatforms": [],
+  "excludePlatforms": [],
+  "allowUnsafeCode": true,
+  "overrideReferences": false,
+  "precompiledReferences": [],
+  "autoReferenced": true,
+  "defineConstraints": [],
+  "versionDefines": [],
+  "noEngineReferences": false
+}

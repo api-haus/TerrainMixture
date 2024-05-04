@@ -7,8 +7,12 @@ namespace TerrainMixture.Utils
 {
 	public static class ProgressUtility
 	{
+		public static bool Validate(int id) => id != 0 && Exists(id);
+
 		public static void Report(int id, float progress, string description)
 		{
+			if (!Validate(id))
+				return;
 #if UNITY_EDITOR
 			Progress.Report(id, progress, description);
 #endif
@@ -22,14 +26,12 @@ namespace TerrainMixture.Utils
 			return true;
 		}
 
-		public static void Remove(int progressId)
+		public static void Remove(int id)
 		{
-			if (!Exists(progressId))
-			{
+			if (!Validate(id))
 				return;
-			}
 #if UNITY_EDITOR
-			Progress.Remove(progressId);
+			Progress.Remove(id);
 #endif
 		}
 
@@ -45,21 +47,21 @@ namespace TerrainMixture.Utils
 			return -1;
 		}
 
-		public static void RegisterCancelCallback(int progressId, Func<bool> abort)
+		public static void RegisterCancelCallback(int id, Func<bool> abort)
 		{
+			if (!Validate(id))
+				return;
 #if UNITY_EDITOR
-			Progress.RegisterCancelCallback(progressId, abort);
+			Progress.RegisterCancelCallback(id, abort);
 #endif
 		}
 
-		public static void UnregisterCancelCallback(int progressId)
+		public static void UnregisterCancelCallback(int id)
 		{
-			if (!Exists(progressId))
-			{
+			if (!Validate(id))
 				return;
-			}
 #if UNITY_EDITOR
-			Progress.UnregisterCancelCallback(progressId);
+			Progress.UnregisterCancelCallback(id);
 #endif
 		}
 	}

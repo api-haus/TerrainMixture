@@ -11,7 +11,7 @@ namespace TerrainMixture.Runtime
 	[ExecuteAlways]
 	public class TerrainMixtureSingleTerrain : MonoBehaviour
 	{
-		const float DebounceTime = 4f;
+		const float DebounceTime = .33f;
 
 		public Texture graphAsset;
 		public Terrain terrain;
@@ -34,18 +34,19 @@ namespace TerrainMixture.Runtime
 			if (Application.isPlaying) return;
 			if (isDirty)
 			{
-				EditorCoroutineUtility.StartCoroutine(DebounceUpdate(), this);
+				EditorCoroutineUtility.StartCoroutine(DebounceUpdate(Guid.NewGuid()), this);
 
 				isDirty = false;
 			}
 		}
 
-		Guid Latest;
-		IEnumerator DebounceUpdate()
-		{
-			var guid = Latest = Guid.NewGuid();
+		static Guid Latest;
 
-			yield return CoroutineUtility.WaitForSeconds(DebounceTime);
+		IEnumerator DebounceUpdate(Guid guid)
+		{
+			Latest = guid;
+
+			yield return CoroutineUtility.WaitForSeconds(DebounceTime, true);
 
 			if (Latest != guid)
 			{

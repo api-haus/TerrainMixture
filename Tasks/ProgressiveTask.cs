@@ -18,7 +18,7 @@ namespace TerrainMixture.Tasks
 
 		protected abstract IEnumerator Process();
 
-		protected abstract void OnAbort();
+		protected abstract void OnEndProcess();
 
 		public IEnumerator Start()
 		{
@@ -34,7 +34,7 @@ namespace TerrainMixture.Tasks
 				TaskController.AbortSignal -= Dispose;
 			}
 
-			OnAbort();
+			OnEndProcess();
 		}
 	}
 }

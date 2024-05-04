@@ -8,10 +8,11 @@ namespace Mixture
 Similar to Combine node, but extracts layers from each other to produce Weighted Layer Blend for Terrain Splatmap textures.
 ")]
 	[System.Serializable]
-	[NodeMenuItem("Operators/Four Layer Blend (Terrain Mixture)")]
+	[NodeMenuItem("Operators/Four Layer Blend")]
+	[NodeMenuItem("Terrain/Four Layer Blend")]
 	public class FourLayerBlendNode : FixedShaderNode
 	{
-		public override string name => "Four Layer Blend (Terrain Mixture)";
+		public override string name => "Four Layer Blend";
 
 		public override string shaderName => "Hidden/TerrainMixture/FourLayerBlend";
 

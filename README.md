@@ -1,9 +1,8 @@
-Terrain Mixture
-===============
+![#Terrain Mixture](.github/header.jpg)
 
 > Extension for [Mixture](alelievr/Mixture) enabling Procedural Terrain Generation.
 
-> Status: Proof Of Concept / WIP
+> Status: 🚧 Proof Of Concept 🚧
 
 ## Project Description.
 
@@ -28,9 +27,23 @@ Additionally, Compute Buffer support allows for placing Tree Instances.
     * [x] Terrain Height
     * [x] Splat Maps
     * [x] Detail Output via Details Output Node
-    * [ ] Tree Instances via Trees Output Node
-* [x] Background execution with configurable amount of Runtime Skipped Frames.
+    * [x] Tree Instances via Trees Output Node
+* [x] Background Terrain sync with configurable amount of Runtime Skipped Frames.
 * [ ] Runtime Tile-based "endless" setup.
 * [x] In-Editor setup with realtime previews (using Editor Coroutines).
 * [ ] Biome Blending.
 * [ ] Stamps.
+* [ ] Scene Capture feature, rendering Terrain Objects to Texture Masks.
+
+## Usage.
+
+1. Create new Terrain Mixture Asset from Menu:
+   > `Assets/Create/🧪Terrain Mixture🏔/⛰️Terrain Mixture Graph`
+2. Use custom Terrain Mixture nodes to define Terrain Outputs:
+   > **[Terrain Output Nodes Documentation](docs/terrain-output-nodes.md)**
+3. For now, there's only In-Editor workflow:
+    * Create Terrain GameObject
+    * Attach `TerrainMixtureSingleTerrain` MonoBehaviour
+    * Assign Graph property to your graph created in step 1.
+    * Assign Terrain property to your Terrain.
+    * Terrain Mixture will react to runtime changes in Graph and update Terrain accordingly.

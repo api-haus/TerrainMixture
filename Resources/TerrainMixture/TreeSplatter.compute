@@ -1,0 +1,166 @@
+#pragma kernel GenerateSplatPoints
+
+#include "Packages/com.alelievr.mixture/Runtime/Shaders/Splatter.hlsl"
+#include "Packages/com.alelievr.mixture/Runtime/Shaders/NoiseUtils.hlsl"
+
+struct TreeInstance
+{
+    float3 position;
+    float rotation;
+    float2 scale;
+    uint id;
+};
+
+RWStructuredBuffer<TreeInstance> _TreeInstances;
+
+Texture2D<float> _DensityMask;
+int _DensityMaskResolution;
+Texture2D<float> _HeightMap;
+int _HeightMapResolution;
+SamplerState sampler_LinearClamp;
+
+float _TerrainDimensions;
+float _TerrainHeight;
+
+// Stack
+float3 _StackPosition;
+
+// R2
+float _Lambda;
+
+// Rotation
+float _MinAngle;
+float _MaxAngle;
+
+// Scale
+float2 _MinScale;
+float2 _MaxScale;
+
+// Other
+float _Time;
+float _ElementCount;
+float3 _PositionJitter;
+float _Seed;
+
+// constants
+static float phi = 1.324717957244746;
+static float pi = 3.14159265359;
+static float delta0 = 0.76;
+static float i0 = 0.700;
+static float2 alpha = float2(1.0 / phi, 1.0 / phi / phi);
+
+// Floor division modulo
+float2 fmod(float2 x)
+{
+    return x - floor(x);
+}
+
+// See IQ's "Integer Hash - III" shader: https://www.shadertoy.com/view/4tXyWN
+float hash(float2 x)
+{
+    float2 q = 1103515245U * ((uint2(x) >> 1U) ^ (uint2(x.yx)));
+    uint n = 1103515245U * ((uint(q.x)) ^ (uint(q.y) >> 3U));
+    return float(n) * (1.0 / float(0xffffffffU));
+}
+
+// Source: https://www.shadertoy.com/view/MtVBRw
+void R2(uint id, uint position1D)
+{
+    position1D++;
+
+    float2 u = float2(hash(float2(position1D, 0)), hash(float2(position1D, 1))) - 0.5;
+    float2 pos = fmod(
+        alpha * float(position1D) + _Lambda * delta0 * sqrt(pi) / (4.0 * sqrt(float(position1D) - i0)) * u);
+
+    _TreeInstances[id].position.xz = pos * 2 - 1;
+}
+
+float3 WhiteNoise3(uint id)
+{
+    float3 f = float3(float(id + _Seed) * 3.56687, 0, 0);
+
+    return float3(
+        WhiteNoise(f + float3(0, 0, 0)),
+        WhiteNoise(f + float3(0, 1, 0)),
+        WhiteNoise(f + float3(0, 2, 0))
+    );
+}
+
+float2 WhiteNoise2(uint id)
+{
+    float3 f = float3(float(id + _Seed) * 3.56687, 0, 0);
+
+    return float2(
+        WhiteNoise(f + float3(0, 0, 0)),
+        WhiteNoise(f + float3(0, 1, 0))
+    );
+}
+
+float WhiteNoise1(uint id)
+{
+    float3 f = float3(float(id + _Seed) * 3.56687, 0, 0);
+
+    return WhiteNoise(f);
+}
+
+float3 JitterPositionXZ(uint id)
+{
+    float3 r = WhiteNoise3(id) * 2 - 1;
+    float3 j = 0;
+    j.xz = _PositionJitter.xz * rcp(_TerrainDimensions);
+    return r * j * _TreeInstances[id].scale.xyx * 0.1;
+}
+
+float3 JitterPositionY(uint id)
+{
+    // Only sinks down
+    float3 r = float3(1, WhiteNoise1(id), 1) - 1;
+    float3 j = 0;
+    j.y = _PositionJitter.y * rcp(_TerrainHeight);
+    return r * j * _TreeInstances[id].scale.xyx * 0.1;
+}
+
+void RandomBetweenRotation(uint id)
+{
+    _TreeInstances[id].rotation = lerp(_MinAngle, _MaxAngle, WhiteNoise1(id + 100));
+}
+
+void TowardsCenterRotation(uint id)
+{
+}
+
+void RandomBetweenScale(uint id)
+{
+    _TreeInstances[id].scale *= lerp(_MinScale, _MaxScale, WhiteNoise2(id + 200));
+}
+
+float3 NormalizeToBounds(float3 position)
+{
+    position.xz = frac(position.xz);
+
+    // IDK why it needs to multiply by 2. I tried different Linear/SRGB settings, will revisit this issue later...
+    position.y = _HeightMap[uint2(position.xz * _HeightMapResolution)].r * 2.;
+
+    return position;
+}
+
+[numthreads(64,1,1)]
+void GenerateSplatPoints(uint id : SV_DispatchThreadID)
+{
+    if (id > uint(_ElementCount))
+        return;
+
+    uint position1D = id;
+    _TreeInstances[id].id = id + 1;
+    _TreeInstances[id].scale = 1;
+
+    R2(id, position1D);
+
+    RandomBetweenRotation(id);
+    RandomBetweenScale(id);
+
+    // Add jitter + offset to initial position:
+    _TreeInstances[id].position += JitterPositionXZ(id);
+    _TreeInstances[id].position = NormalizeToBounds(_TreeInstances[id].position);
+    _TreeInstances[id].position += JitterPositionY(id);
+}

@@ -6,6 +6,7 @@ namespace TerrainMixture.Utils
 	{
 		public static void Destroy(Object obj)
 		{
+			if (obj == null) return;
 			if (Application.isPlaying)
 			{
 				Object.Destroy(obj);

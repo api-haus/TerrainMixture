@@ -1,0 +1,15 @@
+{
+  "name": "api.haus.TerrainMixture.Authoring",
+  "rootNamespace": "TerrainMixture.Authoring",
+  "references": [
+  ],
+  "includePlatforms": [],
+  "excludePlatforms": [],
+  "allowUnsafeCode": true,
+  "overrideReferences": false,
+  "precompiledReferences": [],
+  "autoReferenced": true,
+  "defineConstraints": [],
+  "versionDefines": [],
+  "noEngineReferences": false
+}

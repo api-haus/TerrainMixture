@@ -6,6 +6,8 @@
     "Mixture.Runtime",
     "com.alelievr.NodeGraphProcessor.Runtime",
     "api.haus.TerrainMixture.Utils",
+    "api.haus.TerrainMixture.Authoring",
+    "api.haus.TerrainMixture.Nodes",
     "api.haus.TerrainMixture.Tasks",
     "Unity.EditorCoroutines.Editor"
   ],

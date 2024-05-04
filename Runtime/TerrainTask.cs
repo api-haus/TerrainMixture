@@ -1,28 +1,31 @@
-using System;
 using System.Collections;
+using System.Collections.Generic;
+using System.Linq;
+using GraphProcessor;
 using Mixture;
-using TerrainMixture.Utils;
 using TerrainMixture.Tasks;
-using Unity.Collections;
+using TerrainMixture.Utils;
 using UnityEngine;
 
 namespace TerrainMixture.Runtime
 {
 	public class TerrainTask : ProgressiveTask
 	{
-		const float MaxDetailsFrameSkip = 8;
+		const bool InstantiateGraph = false;
 
 		readonly MixtureGraph Graph;
 		readonly Terrain Terrain;
 
-		int CurrentTexture;
-		int TotalTextures;
+		TerrainData TerrainData => Terrain.terrainData;
+
+		int CurrentStep;
+		int TotalSteps;
 
 		public TerrainTask(MixtureGraph sourceGraph, Terrain terrain, TaskController taskController)
 			: base(taskController)
 		{
 			Terrain = terrain;
-			Graph = UnityEngine.Object.Instantiate(sourceGraph);
+			Graph = InstantiateGraph ? Object.Instantiate(sourceGraph) : sourceGraph;
 		}
 
 		protected override IEnumerator Process()
@@ -34,17 +37,47 @@ namespace TerrainMixture.Runtime
 
 			TaskController.Begin("Terrain Task");
 
-			TotalTextures = Graph.outputTextures.Count;
-			CurrentTexture = 0;
+			TaskController.Progress(0, "Executing graph...");
 
-			TaskController.Progress(0, "Updating graph...");
+			var heightOutputs = Graph.graphOutputs.OfType<TerrainHeightOutputNode>().Where(x => x.canProcess).ToArray();
+			var splatOutputs = Graph.graphOutputs.OfType<TerrainSplatOutputNode>().Where(x => x.canProcess).ToArray();
+
+			var treeOutputs = Graph.graphOutputs.OfType<TerrainTreesNode>().Where(x => x.canProcess).ToArray();
+			var detailOutputs = Graph.graphOutputs.OfType<TerrainDetailsNode>().Where(x => x.canProcess).ToArray();
+
+			// Idea is to force execution of relevant outputs.
+			// After first execution they are getting culled for some reason.
+
+			List<BaseNode> relevantOutputs = new();
+			relevantOutputs.AddRange(heightOutputs);
+			relevantOutputs.AddRange(splatOutputs);
+			relevantOutputs.AddRange(treeOutputs);
+			relevantOutputs.AddRange(detailOutputs);
+
+			foreach (var relevantOutput in relevantOutputs)
+			{
+				if (relevantOutput.computeOrder <= 0)
+					relevantOutput.Initialize(Graph);
+			}
 
 			MixtureGraphProcessor.RunOnce(Graph);
-			Graph.UpdateAndReadbackTextures();
 
 			TaskController.Progress(0, "Processing...");
 
-			foreach (var graphOutputTexture in Graph.outputTextures)
+			SetupTerrainParameters();
+
+			SetupTerrainLayers(splatOutputs);
+
+			TotalSteps = heightOutputs.Length + splatOutputs.Length + treeOutputs.Length + detailOutputs.Length;
+			CurrentStep = 0;
+
+			void OnNextStep(string description = "Processing...")
+			{
+				CurrentStep++;
+				TaskController.Progress((float)CurrentStep / TotalSteps, description);
+			}
+
+			foreach (var heightOutputNode in heightOutputs)
 			{
 				if (IsCancelled)
 				{
@@ -52,138 +85,79 @@ namespace TerrainMixture.Runtime
 					yield break;
 				}
 
-				switch (graphOutputTexture.name)
-				{
-					case "Terrain Height":
-						CopyToHeightmap(graphOutputTexture);
-						break;
-					case "Splat 0":
-						CopyToTexture(graphOutputTexture, TerrainData.AlphamapTextureName, 0);
-						break;
-					case "Detail Density 0":
-						yield return CopyToDetailDensity(graphOutputTexture, 0);
-						break;
-				}
+				OnNextStep("Heightmap...");
+				TerrainData.UploadHeightmap(heightOutputNode.heightOutput);
+			}
 
+			foreach (var splatOutputNode in splatOutputs)
+			{
 				if (IsCancelled)
 				{
 					TaskController.Complete();
 					yield break;
 				}
 
-				CurrentTexture++;
-
-				TaskController.Progress((float)CurrentTexture / TotalTextures, "Processing...");
+				OnNextStep("Splat...");
+				TerrainData.UploadTexture(splatOutputNode.splatOutput,
+					TerrainData.AlphamapTextureName,
+					splatOutputNode.splatIndex);
 			}
-		}
 
-		void CopyToHeightmap(Texture texture)
-		{
-			var ct = RenderTexture.active;
-			var rt = TextureUtility.ToTemporaryRT(texture, Terrain.terrainData.heightmapResolution,
-				RenderTextureFormat.R16);
-			RenderTexture.active = rt;
+			var treeLayer = 0;
+			TerrainData.UploadTreePrototypes(treeOutputs);
 
-			var region = new RectInt(0, 0, rt.width, rt.height);
-			var dest = new Vector2Int(0, 0);
-
-			Terrain.terrainData.CopyActiveRenderTextureToHeightmap(region, dest,
-				TerrainHeightmapSyncControl.HeightAndLod);
-			Terrain.terrainData.SyncHeightmap();
-
-			RenderTexture.active = ct;
-			RenderTexture.ReleaseTemporary(rt);
-		}
-
-		void CopyToTexture(Texture texture, string textureName, int textureIndex)
-		{
-			var ct = RenderTexture.active;
-			var rt = TextureUtility.ToTemporaryRT(texture, Terrain.terrainData.alphamapResolution,
-				RenderTextureFormat.ARGB32);
-			RenderTexture.active = rt;
-
-			var region = new RectInt(0, 0, rt.width, rt.height);
-			var dest = new Vector2Int(0, 0);
-
-			Terrain.terrainData.CopyActiveRenderTextureToTexture(textureName, textureIndex, region, dest, true);
-			Terrain.terrainData.SyncTexture(textureName);
-
-			RenderTexture.active = ct;
-			RenderTexture.ReleaseTemporary(rt);
-		}
-
-		IEnumerator CopyToDetailDensity(Texture texture, int detailLayer)
-		{
-			var detailMap =
-				Terrain.terrainData.GetDetailLayer(0, 0, Terrain.terrainData.detailWidth,
-					Terrain.terrainData.detailHeight,
-					detailLayer);
-
-			var rt = TextureUtility.ToTemporaryRT(texture, Terrain.terrainData.alphamapResolution,
-				RenderTextureFormat.ARGB32);
-
-			var detailDensityTexture2D = TextureUtility.SyncReadback(rt, TextureFormat.R16);
-			RenderTexture.ReleaseTemporary(rt);
-
-			var tmpTextureData = detailDensityTexture2D.GetRawTextureData<ushort>();
-			using var detailTextureData = new NativeArray<ushort>(tmpTextureData, Allocator.Persistent);
-
-			var current = 0;
-			var total = Terrain.terrainData.detailHeight * Terrain.terrainData.detailWidth;
-
-			var time = Time.realtimeSinceStartup;
-
-			// For each pixel in the detail map...
-			for (var y = 0; y < Terrain.terrainData.detailHeight; y++)
+			foreach (var treeOutput in treeOutputs)
 			{
-				for (var x = 0; x < Terrain.terrainData.detailWidth; x++)
+				if (IsCancelled)
 				{
-					var textureX = (float)x / Terrain.terrainData.detailWidth * texture.width;
-					var textureY = (float)y / Terrain.terrainData.detailHeight * texture.height;
-					var textureIndex = (int)(textureY * texture.width + textureX) % detailTextureData.Length;
-					var detailSample = (float)detailTextureData[textureIndex] / ushort.MaxValue;
-
-					// For CoverageMode it holds values 0..255
-					detailMap[x, y] = (int)Mathf.Clamp(detailSample * 255f, 0, 255);
-
-					++current;
-					var sinceLastFrameSkip = Time.realtimeSinceStartup - time;
-
-					if (sinceLastFrameSkip >= MaxDetailsFrameSkip * Time.fixedDeltaTime)
-					{
-						time = Time.realtimeSinceStartup;
-
-						var progress = Mathf.Lerp((float)CurrentTexture / TotalTextures,
-							(float)(CurrentTexture + 1) / TotalTextures,
-							(float)current / total);
-
-						if (IsCancelled)
-						{
-							TaskController.Complete();
-							yield break;
-						}
-
-						TaskController.Progress(progress, "Details...");
-						yield return null;
-
-						if (IsCancelled)
-						{
-							TaskController.Complete();
-							yield break;
-						}
-					}
+					TaskController.Complete();
+					yield break;
 				}
+
+				OnNextStep("Trees...");
+				yield return TerrainData.UploadTreeInstances(TaskController, treeOutput.TreeInstancesBuffer,
+					treeOutput.SafeMaxSplatCount, treeLayer++);
 			}
 
-			Terrain.terrainData.SetDetailScatterMode(DetailScatterMode.CoverageMode);
-			Terrain.terrainData.SetDetailLayer(0, 0, detailLayer, detailMap);
+			var detailLayer = 0;
+			TerrainData.UploadDetailPrototypes(detailOutputs);
 
-			ObjectUtility.Destroy(detailDensityTexture2D);
+			foreach (var detailOutput in detailOutputs)
+			{
+				if (IsCancelled)
+				{
+					TaskController.Complete();
+					yield break;
+				}
+
+				OnNextStep("Details...");
+				yield return TerrainData.UploadDetailInstances(TaskController, detailOutput.detailOutput, detailLayer++);
+			}
 		}
 
-		protected override void OnAbort()
+		void SetupTerrainParameters()
 		{
-			ObjectUtility.Destroy(Graph);
+			var terrainHeight = Graph.GetParameterValue<float>("Terrain Height");
+			var terrainDimensions = Graph.GetParameterValue<float>("Terrain Dimensions");
+			var graphResolution = Graph.settings.width;
+
+			TerrainData.alphamapResolution = graphResolution;
+			TerrainData.heightmapResolution = graphResolution + 1;
+			TerrainData.size = new Vector3(terrainDimensions, terrainHeight, terrainDimensions);
+		}
+
+		void SetupTerrainLayers(IEnumerable<TerrainSplatOutputNode> splatOutputs)
+		{
+			var terrainLayers = splatOutputs
+				.OrderBy(x => x.splatIndex)
+				.SelectMany(x => x.terrainLayers).ToArray();
+			TerrainData.UploadTerrainLayers(terrainLayers);
+		}
+
+		protected override void OnEndProcess()
+		{
+			if (InstantiateGraph)
+				ObjectUtility.Destroy(Graph);
 		}
 	}
 }
