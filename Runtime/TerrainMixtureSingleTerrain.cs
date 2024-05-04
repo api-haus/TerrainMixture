@@ -19,6 +19,7 @@ namespace TerrainMixture.Runtime
 		[HideInInspector] [SerializeField] MixtureGraph graph;
 
 		[SerializeField] bool isDirty;
+		[SerializeField] bool watchUpdates;
 
 		void OnValidate()
 		{
@@ -32,7 +33,7 @@ namespace TerrainMixture.Runtime
 		void LateUpdate()
 		{
 			// if (Application.isPlaying) return;
-			if (isDirty)
+			if (watchUpdates && isDirty)
 			{
 				EditorCoroutineUtility.StartCoroutine(DebounceUpdate(Guid.NewGuid()), this);
 
