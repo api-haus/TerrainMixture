@@ -1,0 +1,16 @@
+{
+  "name": "api.haus.TerrainMixture.Utils",
+  "rootNamespace": "TerrainMixture.Utils",
+  "references": [
+    "Unity.EditorCoroutines.Editor"
+  ],
+  "includePlatforms": [],
+  "excludePlatforms": [],
+  "allowUnsafeCode": true,
+  "overrideReferences": false,
+  "precompiledReferences": [],
+  "autoReferenced": true,
+  "defineConstraints": [],
+  "versionDefines": [],
+  "noEngineReferences": false
+}

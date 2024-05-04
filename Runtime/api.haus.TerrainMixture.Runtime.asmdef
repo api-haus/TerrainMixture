@@ -1,0 +1,21 @@
+{
+  "name": "api.haus.TerrainMixture.Runtime",
+  "rootNamespace": "TerrainMixture.Runtime",
+  "references": [
+    "Unity.Collections",
+    "Mixture.Runtime",
+    "com.alelievr.NodeGraphProcessor.Runtime",
+    "api.haus.TerrainMixture.Utils",
+    "api.haus.TerrainMixture.Tasks",
+    "Unity.EditorCoroutines.Editor"
+  ],
+  "includePlatforms": [],
+  "excludePlatforms": [],
+  "allowUnsafeCode": true,
+  "overrideReferences": false,
+  "precompiledReferences": [],
+  "autoReferenced": true,
+  "defineConstraints": [],
+  "versionDefines": [],
+  "noEngineReferences": false
+}

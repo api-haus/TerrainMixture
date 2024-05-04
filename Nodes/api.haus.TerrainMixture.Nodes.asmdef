@@ -1,0 +1,23 @@
+{
+  "name": "api.haus.TerrainMixture.Nodes",
+  "rootNamespace": "Mixture",
+  "references": [
+    "GUID:2d4f7c45c8e0fbd4ba3ecdc05c6395f5",
+    "GUID:4bdfb2239705740718731d0b4d54061d",
+    "GUID:d8b63aba1907145bea998dd612889d6b",
+    "Mixture.Runtime",
+    "com.alelievr.NodeGraphProcessor.Runtime",
+    "api.haus.TerrainMixture.Runtime",
+    "api.haus.TerrainMixture.Utils",
+    "Unity.EditorCoroutines.Editor"
+  ],
+  "includePlatforms": [],
+  "excludePlatforms": [],
+  "allowUnsafeCode": true,
+  "overrideReferences": false,
+  "precompiledReferences": [],
+  "autoReferenced": true,
+  "defineConstraints": [],
+  "versionDefines": [],
+  "noEngineReferences": false
+}
