@@ -59,7 +59,7 @@ namespace TerrainMixture.Runtime.Streams
 				{
 					var textureX = (float)x / TerrainData.detailWidth * width;
 					var textureY = (float)y / TerrainData.detailHeight * height;
-					var textureIndex = (int)(textureY * width + textureX) % detailTextureData.Length;
+					var textureIndex = (int)(textureX * width + textureY) % detailTextureData.Length;
 					var detailSample = (float)detailTextureData[textureIndex] / ushort.MaxValue;
 
 					// For CoverageMode it holds values 0..255

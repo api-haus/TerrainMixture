@@ -2,8 +2,6 @@ using GraphProcessor;
 using UnityEditor.UIElements;
 using UnityEngine.UIElements;
 using Mixture;
-using UnityEditor;
-using UnityEngine;
 
 namespace TerrainMixture.Editor
 {

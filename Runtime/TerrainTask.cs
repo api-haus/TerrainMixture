@@ -54,11 +54,11 @@ namespace TerrainMixture.Runtime
 			relevantOutputs.AddRange(treeOutputs);
 			relevantOutputs.AddRange(detailOutputs);
 
-			foreach (var relevantOutput in relevantOutputs)
-			{
-				if (relevantOutput.computeOrder <= 0)
-					relevantOutput.Initialize(Graph);
-			}
+			// foreach (var relevantOutput in relevantOutputs)
+			// {
+			// 	if (relevantOutput.computeOrder <= 0)
+			// 		relevantOutput.Initialize(Graph);
+			// }
 
 			MixtureGraphProcessor.RunOnce(Graph);
 
