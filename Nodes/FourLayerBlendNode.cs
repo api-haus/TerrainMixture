@@ -1,8 +1,7 @@
 using System.Collections.Generic;
 using GraphProcessor;
-using Mixture;
 
-namespace Mixture
+namespace Mixture.Nodes
 {
 	[Documentation(@"
 Similar to Combine node, but extracts layers from each other to produce Weighted Layer Blend for Terrain Splatmap textures.

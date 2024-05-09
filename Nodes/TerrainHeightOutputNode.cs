@@ -1,7 +1,7 @@
 using GraphProcessor;
 using UnityEngine;
 
-namespace Mixture
+namespace Mixture.Nodes
 {
 	[Documentation(@"
 Set normalized Height Output.

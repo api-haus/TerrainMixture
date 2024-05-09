@@ -1,7 +1,9 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using Mixture;
+using Mixture.Nodes;
 using TerrainMixture.Runtime.Streams;
 using TerrainMixture.Tasks;
 using TerrainMixture.Utils;
@@ -15,7 +17,7 @@ namespace TerrainMixture.Runtime
 			int textureIndex)
 		{
 			var ct = RenderTexture.active;
-			var rt = TextureUtility.ToTemporaryRT(texture, terrainData.alphamapResolution,
+			var rt = TextureUtility.CopyRT(texture, terrainData.alphamapResolution,
 				RenderTextureFormat.ARGB32);
 			RenderTexture.active = rt;
 
@@ -32,7 +34,7 @@ namespace TerrainMixture.Runtime
 		public static void UploadHeightmap(this TerrainData terrainData, Texture texture)
 		{
 			var ct = RenderTexture.active;
-			var rt = TextureUtility.ToTemporaryRT(texture, terrainData.heightmapResolution,
+			var rt = TextureUtility.CopyRT(texture, terrainData.heightmapResolution,
 				RenderTextureFormat.R16);
 			RenderTexture.active = rt;
 
@@ -64,6 +66,13 @@ namespace TerrainMixture.Runtime
 			}
 
 			terrainData.detailPrototypes = prototypes;
+		}
+
+		public static void Clear(this TerrainData terrainData)
+		{
+			terrainData.SetTreeInstances(Array.Empty<TreeInstance>(), false);
+			terrainData.treePrototypes = Array.Empty<TreePrototype>();
+			terrainData.detailPrototypes = Array.Empty<DetailPrototype>();
 		}
 
 		public static void UploadTreePrototypes(this TerrainData terrainData, IReadOnlyList<TerrainTreesNode> treeOutputs)

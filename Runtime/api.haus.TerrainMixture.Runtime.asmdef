@@ -5,11 +5,14 @@
     "Unity.Collections",
     "Mixture.Runtime",
     "com.alelievr.NodeGraphProcessor.Runtime",
+    "com.alelievr.NodeGraphProcessor.Editor",
     "api.haus.TerrainMixture.Utils",
     "api.haus.TerrainMixture.Authoring",
     "api.haus.TerrainMixture.Nodes",
     "api.haus.TerrainMixture.Tasks",
-    "Unity.EditorCoroutines.Editor"
+    "Unity.EditorCoroutines.Editor",
+    "Unity.AI.Navigation",
+    "AnyPath"
   ],
   "includePlatforms": [],
   "excludePlatforms": [],
@@ -18,6 +21,12 @@
   "precompiledReferences": [],
   "autoReferenced": true,
   "defineConstraints": [],
-  "versionDefines": [],
+  "versionDefines": [
+    {
+      "name": "com.unity.ai.navigation",
+      "expression": "1.0.0",
+      "define": "UNITY_AI_NAVIGATION"
+    }
+  ],
   "noEngineReferences": false
 }

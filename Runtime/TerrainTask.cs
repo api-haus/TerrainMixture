@@ -1,18 +1,17 @@
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
-using GraphProcessor;
 using Mixture;
+using Mixture.Nodes;
+using TerrainMixture.Runtime.Navigation;
 using TerrainMixture.Tasks;
-using TerrainMixture.Utils;
 using UnityEngine;
 
 namespace TerrainMixture.Runtime
 {
 	public class TerrainTask : ProgressiveTask
 	{
-		const bool InstantiateGraph = false;
-
+		readonly NavigationSupport NavigationSupport;
 		readonly MixtureGraph Graph;
 		readonly Terrain Terrain;
 
@@ -21,11 +20,13 @@ namespace TerrainMixture.Runtime
 		int CurrentStep;
 		int TotalSteps;
 
-		public TerrainTask(MixtureGraph sourceGraph, Terrain terrain, TaskController taskController)
+		public TerrainTask(NavigationSupport support, MixtureGraph sourceGraph, Terrain terrain,
+			TaskController taskController)
 			: base(taskController)
 		{
+			NavigationSupport = support;
 			Terrain = terrain;
-			Graph = InstantiateGraph ? Object.Instantiate(sourceGraph) : sourceGraph;
+			Graph = sourceGraph;
 		}
 
 		protected override IEnumerator Process()
@@ -39,36 +40,23 @@ namespace TerrainMixture.Runtime
 
 			TaskController.Progress(0, "Executing graph...");
 
-			var heightOutputs = Graph.graphOutputs.OfType<TerrainHeightOutputNode>().Where(x => x.canProcess).ToArray();
-			var splatOutputs = Graph.graphOutputs.OfType<TerrainSplatOutputNode>().Where(x => x.canProcess).ToArray();
+			var validOutputs = Graph.graphOutputs.ToArray();
 
-			var treeOutputs = Graph.graphOutputs.OfType<TerrainTreesNode>().Where(x => x.canProcess).ToArray();
-			var detailOutputs = Graph.graphOutputs.OfType<TerrainDetailsNode>().Where(x => x.canProcess).ToArray();
+			var heightOutputs = validOutputs.OfType<TerrainHeightOutputNode>().ToArray();
+			var splatOutputs = validOutputs.OfType<TerrainSplatOutputNode>().ToArray();
 
-			// Idea is to force execution of relevant outputs.
-			// After first execution they are getting culled for some reason.
-
-			List<BaseNode> relevantOutputs = new();
-			relevantOutputs.AddRange(heightOutputs);
-			relevantOutputs.AddRange(splatOutputs);
-			relevantOutputs.AddRange(treeOutputs);
-			relevantOutputs.AddRange(detailOutputs);
-
-			// foreach (var relevantOutput in relevantOutputs)
-			// {
-			// 	if (relevantOutput.computeOrder <= 0)
-			// 		relevantOutput.Initialize(Graph);
-			// }
-
-			MixtureGraphProcessor.RunOnce(Graph);
+			var treeOutputs = validOutputs.OfType<TerrainTreesNode>().ToArray();
+			var detailOutputs = validOutputs.OfType<TerrainDetailsNode>().ToArray();
 
 			TaskController.Progress(0, "Processing...");
 
 			SetupTerrainParameters();
 
+			TerrainData.Clear();
+
 			SetupTerrainLayers(splatOutputs);
 
-			TotalSteps = heightOutputs.Length + splatOutputs.Length + treeOutputs.Length + detailOutputs.Length;
+			TotalSteps = heightOutputs.Length + splatOutputs.Length + treeOutputs.Length + detailOutputs.Length + 1;
 			CurrentStep = 0;
 
 			void OnNextStep(string description = "Processing...")
@@ -81,7 +69,6 @@ namespace TerrainMixture.Runtime
 			{
 				if (IsCancelled)
 				{
-					TaskController.Complete();
 					yield break;
 				}
 
@@ -93,7 +80,6 @@ namespace TerrainMixture.Runtime
 			{
 				if (IsCancelled)
 				{
-					TaskController.Complete();
 					yield break;
 				}
 
@@ -103,36 +89,42 @@ namespace TerrainMixture.Runtime
 					splatOutputNode.splatIndex);
 			}
 
-			var treeLayer = 0;
 			TerrainData.UploadTreePrototypes(treeOutputs);
+			TerrainData.UploadDetailPrototypes(detailOutputs);
+			// TerrainData.RefreshPrototypes();
+
+			var treeLayer = 0;
 
 			foreach (var treeOutput in treeOutputs)
 			{
 				if (IsCancelled)
 				{
-					TaskController.Complete();
 					yield break;
 				}
 
 				OnNextStep("Trees...");
-				yield return TerrainData.UploadTreeInstances(TaskController, treeOutput.TreeInstancesBuffer,
+
+				yield return TerrainData.UploadTreeInstances(TaskController, treeOutput.LastStableBuffer,
 					treeOutput.LiveInstancesCount, treeLayer++);
 			}
 
 			var detailLayer = 0;
-			TerrainData.UploadDetailPrototypes(detailOutputs);
-
 			foreach (var detailOutput in detailOutputs)
 			{
 				if (IsCancelled)
 				{
-					TaskController.Complete();
 					yield break;
 				}
 
 				OnNextStep("Details...");
 				yield return TerrainData.UploadDetailInstances(TaskController, detailOutput.detailOutput, detailLayer++);
 			}
+
+			TaskController.Progress((float)CurrentStep / TotalSteps, "Navigation...");
+
+			yield return NavigationTask.GenerateNavMesh(Terrain, TaskController, NavigationSupport);
+
+			OnNextStep("Completed");
 		}
 
 		void SetupTerrainParameters()
@@ -154,10 +146,8 @@ namespace TerrainMixture.Runtime
 			TerrainData.UploadTerrainLayers(terrainLayers);
 		}
 
-		protected override void OnEndProcess()
+		protected override void OnPostProcess()
 		{
-			if (InstantiateGraph)
-				ObjectUtility.Destroy(Graph);
 		}
 	}
 }

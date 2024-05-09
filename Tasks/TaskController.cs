@@ -10,11 +10,13 @@ namespace TerrainMixture.Tasks
 		internal Action AbortSignal;
 
 		internal int TaskId;
-		internal bool IsCancelled { get; private set; } = false;
+		public bool IsDisposed { get; private set; } = false;
 		internal bool IsCompleted { get; private set; } = false;
 
 		public int TotalSteps;
 		public int CurrentStep;
+
+		float LastProgress;
 
 		public void Begin(string name)
 		{
@@ -25,12 +27,12 @@ namespace TerrainMixture.Tasks
 
 		public void NextStep(string description)
 		{
-			ProgressUtility.Report(TaskId, ++CurrentStep / (float)TotalSteps, description);
+			Report(++CurrentStep / (float)TotalSteps, description);
 		}
 
 		public void Progress(float progress, string description)
 		{
-			ProgressUtility.Report(TaskId, progress, description);
+			Report(progress, description);
 		}
 
 		public void RelativeProgress(float relativeProgress, string description)
@@ -40,7 +42,18 @@ namespace TerrainMixture.Tasks
 				(CurrentStep + 1) / (float)TotalSteps,
 				relativeProgress
 			);
+			Report(progress, description);
+		}
+
+		void Report(float progress, string description)
+		{
+			LastProgress = progress;
 			ProgressUtility.Report(TaskId, progress, description);
+		}
+
+		public void Describe(string description)
+		{
+			ProgressUtility.Report(TaskId, LastProgress, description);
 		}
 
 		public void Complete()
@@ -58,7 +71,7 @@ namespace TerrainMixture.Tasks
 
 		public void Cancel()
 		{
-			IsCancelled = true;
+			IsDisposed = true;
 			Dispose();
 		}
 
@@ -78,7 +91,7 @@ namespace TerrainMixture.Tasks
 			}
 
 			AbortSignal?.Invoke();
-			IsCancelled = true;
+			IsDisposed = true;
 		}
 	}
 }

@@ -1,6 +1,6 @@
 using UnityEngine;
 
-namespace TerrainMixture.Authoring
+namespace TerrainMixture.Authoring.Authoring
 {
 	[CreateAssetMenu(menuName = "🧪Terrain Mixture🏔/🍀Detail Template️")]
 	public class DetailTemplate : ScriptableObject, IHasPrototypePrefab, IHasPrototypeTexture

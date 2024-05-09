@@ -1,6 +1,8 @@
 using GraphProcessor;
 using Mixture;
+using Mixture.Nodes;
 using TerrainMixture.Authoring;
+using TerrainMixture.Authoring.Authoring;
 using UnityEditor.UIElements;
 
 namespace TerrainMixture.Editor

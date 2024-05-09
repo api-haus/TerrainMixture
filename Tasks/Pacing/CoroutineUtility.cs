@@ -1,15 +1,20 @@
 using System.Collections;
+using UnityEngine;
 #if UNITY_EDITOR
 using Unity.EditorCoroutines.Editor;
 #endif
-using UnityEngine;
 
-namespace TerrainMixture.Utils
+namespace TerrainMixture.Tasks.Pacing
 {
 	public static class CoroutineUtility
 	{
-		public static bool FrameSkip(ref float time, int maxFrameSkip = 4)
+		public static bool FrameSkip(ref float time, int maxFrameSkip = -1)
 		{
+			if (maxFrameSkip == -1)
+			{
+				maxFrameSkip = PacingController.CurrentMaxFrameSkip;
+			}
+
 			var sinceLastFrameSkip = Time.realtimeSinceStartup - time;
 			var isLate = sinceLastFrameSkip >= maxFrameSkip * Time.fixedDeltaTime;
 
@@ -31,17 +36,15 @@ namespace TerrainMixture.Utils
 			}
 #endif
 			yield return new WaitForSeconds(time);
-// 			if (!Application.isPlaying)
-// 			{
-// 				yield return new EditorWaitForSeconds(time);
-// 			}
-// 			else
-// 			{
-// 				yield return new WaitForSeconds(time);
-// 			}
-// #else
-// 			yield return new WaitForSeconds(time);
-// #endif
+		}
+
+		public static void StartCoroutine(IEnumerator coroutine)
+		{
+#if UNITY_EDITOR
+			EditorCoroutineUtility.StartCoroutineOwnerless(coroutine);
+#else
+			CoroutineSan.StartCoroutineOwnerless(coroutine);
+#endif
 		}
 	}
 }

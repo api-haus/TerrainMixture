@@ -1,5 +1,6 @@
 using System.Collections;
 using TerrainMixture.Tasks;
+using TerrainMixture.Tasks.Pacing;
 using TerrainMixture.Utils;
 using Unity.Collections;
 using UnityEngine;
@@ -67,11 +68,10 @@ namespace TerrainMixture.Runtime.Streams
 
 					var relativeProgress = ++current / (float)total;
 
-					if (CoroutineUtility.FrameSkip(ref time, MaxFrameSkip))
+					if (CoroutineUtility.FrameSkip(ref time))
 					{
 						if (IsCancelled)
 						{
-							TaskController.Complete();
 							yield break;
 						}
 
@@ -86,7 +86,7 @@ namespace TerrainMixture.Runtime.Streams
 			TerrainData.SetDetailLayer(0, 0, Layer, detailMap);
 		}
 
-		protected override void OnEndProcess()
+		protected override void OnPostProcess()
 		{
 			if (DetailDensityTexture2D != null)
 			{

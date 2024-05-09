@@ -1,20 +1,15 @@
-using System;
-using System.Collections.Generic;
-using GraphProcessor;
-using TerrainMixture.Authoring;
-using UnityEngine;
 using System.Linq;
 using System.Runtime.InteropServices;
+using GraphProcessor;
+using TerrainMixture.Authoring.Authoring;
 using TerrainMixture.Utils;
 using Unity.Collections.LowLevel.Unsafe;
+using UnityEditor;
+using UnityEngine;
 using UnityEngine.Rendering;
 using UnityEngine.Serialization;
 
-#if UNITY_EDITOR
-using UnityEditor;
-#endif
-
-namespace Mixture
+namespace Mixture.Nodes
 {
 	[StructLayout(LayoutKind.Sequential)]
 	public struct TreeInstanceNative
@@ -35,7 +30,9 @@ Sample tree positions from density texture.
 	[NodeMenuItem("Terrain/Trees Output")]
 	public class TerrainTreesNode : ComputeShaderNode, ICreateNodeFrom<TreeTemplate>
 	{
-		public override bool canProcess => template != null && template.Validate() && densityMask != null;
+		const float ThrottleTime = 1f;
+
+		public override bool canProcess => template != null && template.Validate();
 
 		[Input] public Texture densityMask;
 
@@ -45,8 +42,11 @@ Sample tree positions from density texture.
 
 		[Output] public ComputeBuffer resultingPositions;
 
-		[FormerlySerializedAs("maxSplatCount")] [ShowInInspector] [SerializeField]
-		private int maxInstanceCount = 256;
+		[FormerlySerializedAs("maxInstanceCount")]
+		[FormerlySerializedAs("maxSplatCount")]
+		[ShowInInspector]
+		[SerializeField]
+		private int requestedInstances = 256;
 
 		// Grid
 		[Range(0, 2)] public float lambda = 0;
@@ -70,6 +70,7 @@ Sample tree positions from density texture.
 		public override bool showDefaultInspector => true;
 
 		public ComputeBuffer TreeInstancesBuffer;
+		public ComputeBuffer LastStableBuffer;
 
 		int GeneratePointKernel;
 
@@ -89,15 +90,20 @@ Sample tree positions from density texture.
 			return res;
 		}
 
-		public int SafeMaxSplatCount =>
+		public int MaxSafeBufferSize =>
+			LessOrEqualPot((int)(SystemInfo.maxGraphicsBufferSize / TreeInstanceNative.Stride / 2));
+
+		public int SafeBufferSize =>
 			Mathf.Max(
-				8,
-				Mathf.Min(LessOrEqualPot((int)(SystemInfo.maxGraphicsBufferSize / TreeInstanceNative.Stride / 2)),
-					Mathf.ClosestPowerOfTwo(maxInstanceCount)));
+				1, // at least 1 item or it breaks
+				Mathf.Min(MaxSafeBufferSize,
+					Mathf.NextPowerOfTwo(requestedInstances)));
+
+		public int RequestedInstances => Mathf.Min(requestedInstances, MaxSafeBufferSize);
 
 		public int LiveInstancesCount =>
-			TreeInstancesBuffer != null && TreeInstancesBuffer.IsValid()
-				? TreeInstancesBuffer.count
+			LastStableBuffer != null && LastStableBuffer.IsValid()
+				? RequestedInstances
 				: 0;
 
 		// ReSharper disable InconsistentNaming
@@ -119,14 +125,12 @@ Sample tree positions from density texture.
 		static readonly int _ElementCount = Shader.PropertyToID("_ElementCount");
 		// ReSharper restore InconsistentNaming
 
+		float LastInvocationTime;
+
 		Texture2D CachedHeightmap;
 
 		protected override void Enable()
 		{
-			Disable();
-
-			// Debug.Log("0. T.Enable()");
-
 			base.Enable();
 
 			Allocate();
@@ -141,15 +145,20 @@ Sample tree positions from density texture.
 		{
 			if (TreeInstancesBuffer != null)
 			{
-				TreeInstancesBuffer.Dispose();
-				TreeInstancesBuffer = null;
+				if (TreeInstancesBuffer != LastStableBuffer)
+				{
+					TreeInstancesBuffer.Dispose();
+					TreeInstancesBuffer = null;
+				}
 			}
 
 			TreeInstancesBuffer = new ComputeBuffer(
-				SafeMaxSplatCount,
+				SafeBufferSize,
 				TreeInstanceNative.Stride,
 				ComputeBufferType.Structured,
 				ComputeBufferMode.Dynamic);
+
+			LastStableBuffer = TreeInstancesBuffer;
 		}
 
 		void UpdatePreview()
@@ -170,13 +179,13 @@ Sample tree positions from density texture.
 				return false;
 			}
 
-			if (!SetComputeArgs(cmd, SafeMaxSplatCount))
+			if (!SetComputeArgs(cmd))
 			{
 				return false;
 			}
 
 			computeShader.GetKernelThreadGroupSizes(GeneratePointKernel, out uint x, out _, out _);
-			DispatchCompute(cmd, GeneratePointKernel, SafeMaxSplatCount + ((int)x - SafeMaxSplatCount % (int)x));
+			DispatchCompute(cmd, GeneratePointKernel, SafeBufferSize + ((int)x - SafeBufferSize % (int)x));
 
 			// Debug.Log("1. T.Dispatch()");
 			resultingPositions = TreeInstancesBuffer;
@@ -184,22 +193,38 @@ Sample tree positions from density texture.
 			return true;
 		}
 
-		bool SetComputeArgs(CommandBuffer cmd, int safeMaxSplatCount)
+		bool SetComputeArgs(CommandBuffer cmd)
 		{
+			float time = Time.realtimeSinceStartup;
+			if (time - LastInvocationTime >= ThrottleTime)
+			{
+				LastInvocationTime = time;
+			}
+			else
+			{
+				return false;
+			}
+
 			var terrainDimensions = graph.GetParameterValue<float>("Terrain Dimensions");
 			var terrainHeight = graph.GetParameterValue<float>("Terrain Height");
 
 			var heightOutputNode = graph.graphOutputs.OfType<TerrainHeightOutputNode>().FirstOrDefault();
 			if (null == heightOutputNode)
 			{
-				Debug.LogWarning("Invalid height output");
+				Debug.LogError("Invalid height output");
 				return false;
 			}
 
 			var heightMap = heightOutputNode.heightOutput;
 			if (null == heightMap)
 			{
-				Debug.LogWarning("Invalid height texture");
+				Debug.LogError("Invalid height texture");
+				return false;
+			}
+
+			if (null == densityMask)
+			{
+				Debug.LogError("Connect densityMask to Terrain Trees Node");
 				return false;
 			}
 
@@ -225,6 +250,7 @@ Sample tree positions from density texture.
 			CachedHeightmap = TextureUtility.SyncReadback(heightMap, TextureFormat.R16, false);
 			// AssetDatabase.CreateAsset(CachedHeightmap, $"Assets/_cachedHeightmap{DateTime.Now.Ticks}.asset");
 
+
 			cmd.SetComputeTextureParam(computeShader, GeneratePointKernel, _DensityMask, densityMask);
 			cmd.SetComputeIntParam(computeShader, _DensityMaskResolution, densityMask.width);
 			cmd.SetComputeTextureParam(computeShader, GeneratePointKernel, _HeightMap, CachedHeightmap);
@@ -232,7 +258,7 @@ Sample tree positions from density texture.
 
 			cmd.SetComputeBufferParam(computeShader, GeneratePointKernel, _TreeInstances, TreeInstancesBuffer);
 			cmd.SetComputeFloatParam(computeShader, _Time, (Application.isPlaying) ? Time.time : Time.realtimeSinceStartup);
-			cmd.SetComputeFloatParam(computeShader, _ElementCount, safeMaxSplatCount);
+			cmd.SetComputeFloatParam(computeShader, _ElementCount, RequestedInstances);
 			cmd.SetComputeFloatParam(computeShader, _MinAngle, minAngle * Mathf.Deg2Rad);
 			cmd.SetComputeFloatParam(computeShader, _MaxAngle, maxAngle * Mathf.Deg2Rad);
 			cmd.SetComputeFloatParam(computeShader, _Lambda, lambda);
@@ -251,7 +277,8 @@ Sample tree positions from density texture.
 		protected override void Disable()
 		{
 			// Debug.Log("2. T.Disable()");
-			TreeInstancesBuffer?.Dispose();
+			if (LastStableBuffer != TreeInstancesBuffer)
+				TreeInstancesBuffer?.Dispose();
 			ObjectUtility.Destroy(CachedHeightmap);
 			base.Disable();
 		}

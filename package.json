@@ -1,7 +1,7 @@
 {
 	"displayName": "Terrain Mixture",
 	"name": "api.haus.terrainmixture",
-	"version": "0.1.0",
+	"version": "0.2.0",
 	"unity": "2022.3",
 	"unityRelease": "0f1",
 	"description": "Extension for Mixture enabling Procedural Terrain Generation",

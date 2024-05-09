@@ -1,8 +1,8 @@
 using GraphProcessor;
-using TerrainMixture.Authoring;
+using TerrainMixture.Authoring.Authoring;
 using UnityEngine;
 
-namespace Mixture
+namespace Mixture.Nodes
 {
 	[Documentation(@"
 Sample tree positions from density texture.

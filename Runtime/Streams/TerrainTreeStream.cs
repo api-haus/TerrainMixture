@@ -1,8 +1,8 @@
 using System;
 using System.Collections;
-using Mixture;
+using Mixture.Nodes;
 using TerrainMixture.Tasks;
-using TerrainMixture.Utils;
+using TerrainMixture.Tasks.Pacing;
 using UnityEngine;
 using UnityEngine.Rendering;
 
@@ -15,45 +15,41 @@ namespace TerrainMixture.Runtime.Streams
 	public class TerrainTreeStream : ProgressiveTask
 	{
 		// Not possible to change until we refactor how the buffer disposed on tree output node
-		const bool DoSyncReadbacks = true;
-		const bool SnapToHeightmap = false;
+		const bool DoSyncReadbacks = false;
+		const bool SnapToHeightmap = true;
 
-		readonly int MaxFrameSkip = 4;
 		readonly TerrainData TerrainData;
 		readonly ComputeBuffer SourceBuffer;
 		readonly int Layer;
-		readonly int MaxPoints;
+		readonly int SelectedPoints;
 
 		public TerrainTreeStream(TaskController taskController, TerrainData terrainData, ComputeBuffer sourceBuffer,
-			int maxPoints, int treeLayer) : base(taskController)
+			int selectedPoints, int treeLayer) : base(taskController)
 		{
 			TerrainData = terrainData;
 			SourceBuffer = sourceBuffer;
-			MaxPoints = maxPoints;
+			SelectedPoints = selectedPoints;
 			Layer = treeLayer;
 		}
 
 		protected override IEnumerator Process()
 		{
-			if (SourceBuffer == null || !SourceBuffer.IsValid()) yield break;
+			if (SourceBuffer == null || !SourceBuffer.IsValid() || SourceBuffer.count < SelectedPoints) yield break;
 
-			// Debug.Log("TS.Capture()");
 			TreeInstanceNative[] splatPoints;
-			if (DoSyncReadbacks && !Application.isPlaying)
+			if (DoSyncReadbacks)
 			{
-				// ("questionably") helps avoid loosing resource during domain reload when developing/debugging the package.
-				splatPoints = new TreeInstanceNative[MaxPoints];
+				splatPoints = new TreeInstanceNative[SelectedPoints];
 				SourceBuffer.GetData(splatPoints);
 			}
 			else
 			{
 				var readbackRequest =
-					AsyncGPUReadback.Request(SourceBuffer, TreeInstanceNative.Stride * MaxPoints, 0);
+					AsyncGPUReadback.Request(SourceBuffer, TreeInstanceNative.Stride * SelectedPoints, 0);
 				while (!readbackRequest.done)
 				{
 					if (IsCancelled)
 					{
-						TaskController.Complete();
 						yield break;
 					}
 
@@ -68,19 +64,21 @@ namespace TerrainMixture.Runtime.Streams
 				splatPoints = readbackRequest.GetData<TreeInstanceNative>().ToArray();
 			}
 
-			var treeInstances = new TreeInstance[Mathf.Min(MaxPoints, splatPoints.Length)];
+			var treeInstances = new TreeInstance[Mathf.Min(SelectedPoints, splatPoints.Length)];
 
 			var time = Time.realtimeSinceStartup;
 			var total = treeInstances.Length;
 			var current = 0;
 
+			var valid = 0;
+
 			for (var i = 0; i < treeInstances.Length; i++)
 			{
+				var relativeProgress = ++current / (float)total;
 				var splat = splatPoints[i];
 				if (!splat.IsCreated) continue;
 
-				// Debug.Log($"p#{splat.id}: {splat.position}, {splat.scale}, {splat.rotation}");
-
+				valid++;
 				treeInstances[i] = new TreeInstance
 				{
 					position = splat.position,
@@ -91,13 +89,11 @@ namespace TerrainMixture.Runtime.Streams
 					lightmapColor = Color.white,
 					prototypeIndex = Layer,
 				};
-				var relativeProgress = ++current / (float)total;
 
-				if (CoroutineUtility.FrameSkip(ref time, MaxFrameSkip))
+				if (CoroutineUtility.FrameSkip(ref time))
 				{
 					if (IsCancelled)
 					{
-						TaskController.Complete();
 						yield break;
 					}
 
@@ -107,6 +103,7 @@ namespace TerrainMixture.Runtime.Streams
 				}
 			}
 
+			// Debug.Log($"trees:{valid}/{current}");
 #if UNITY_2019_1_OR_NEWER
 			TerrainData.SetTreeInstances(treeInstances, SnapToHeightmap);
 #else
@@ -118,10 +115,12 @@ namespace TerrainMixture.Runtime.Streams
 #endif
 		}
 
-		protected override void OnEndProcess()
+		protected override void OnPostProcess()
 		{
-			// Debug.Log("TS.OnEndProcess()");
-			SourceBuffer?.Dispose();
+			if (SourceBuffer != null && SourceBuffer.IsValid())
+			{
+				SourceBuffer.Dispose();
+			}
 		}
 	}
 }

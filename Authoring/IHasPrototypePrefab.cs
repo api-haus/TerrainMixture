@@ -1,6 +1,6 @@
 using UnityEngine;
 
-namespace TerrainMixture.Authoring
+namespace TerrainMixture.Authoring.Authoring
 {
 	public interface IHasPrototypePrefab
 	{

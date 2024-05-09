@@ -29,16 +29,17 @@ Additionally, Compute Buffer support allows for placing Tree Instances.
     * [x] Detail Output via Details Output Node
     * [x] Tree Instances via Trees Output Node
 * [x] Background Terrain sync with configurable amount of Runtime Skipped Frames.
-* [ ] Runtime Tile-based "endless" setup.
-* [ ] NavMeshes.
+* [x] NavMeshes.
+    * [x] Unity.AI.Navigation
+    * [ ] AnyPath
 * [x] In-Editor setup with realtime previews (using Editor Coroutines).
+* [ ] Runtime Tile-based "endless" setup.
 * [ ] Biome Blending.
 * [ ] Stamps.
 * [ ] Scene Capture feature, projecting Terrain Objects and other Geometry into Texture Masks.
 * [ ] Usability Improvements.
     * [ ] Node Consistency Validations w/ Messages.
     * [ ] Better Node UI's.
-    * [ ] 
 
 ## Usage.
 

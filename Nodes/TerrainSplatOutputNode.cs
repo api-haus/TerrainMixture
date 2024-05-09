@@ -4,10 +4,8 @@ using System.Linq;
 using GraphProcessor;
 using UnityEngine;
 using UnityEngine.Rendering;
-using UnityEngine.Serialization;
-using UnityEngine.UI;
 
-namespace Mixture
+namespace Mixture.Nodes
 {
 	[Documentation(@"
 Set Splat Output.

@@ -1,9 +1,9 @@
 using GraphProcessor;
-using TerrainMixture.Authoring;
+using TerrainMixture.Authoring.Authoring;
 using UnityEditor;
 using UnityEngine;
 
-namespace Mixture
+namespace Mixture.Nodes
 {
 	[System.Serializable]
 	public class AssetPreviewNode<T> : MixtureNode, ICreateNodeFrom<T>
