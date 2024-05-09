@@ -1,0 +1,10 @@
+#pragma kernel CopyRT
+
+Texture2D<float4> _Source;
+RWTexture2D<float4> _Destination;
+
+[numthreads(32,32,1)]
+void CopyRT(uint2 id : SV_DispatchThreadID)
+{
+    _Destination[id] = _Source[id];
+}

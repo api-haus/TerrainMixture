@@ -5,11 +5,10 @@ using TerrainMixture.Utils;
 using Unity.Collections;
 using UnityEngine;
 
-namespace TerrainMixture.Runtime.Streams
+namespace TerrainMixture.Runtime.Processing.Streams
 {
 	public class TerrainDetailStream : ProgressiveTask
 	{
-		readonly int MaxFrameSkip = 4;
 		readonly TerrainData TerrainData;
 
 		readonly Texture DensityTexture;
@@ -33,12 +32,14 @@ namespace TerrainMixture.Runtime.Streams
 				yield break;
 			}
 
-			var detailMap =
-				TerrainData.GetDetailLayer(0, 0, TerrainData.detailWidth,
-					TerrainData.detailHeight,
-					Layer);
+			var (detailWidth, detailHeight) = (TerrainData.detailWidth, TerrainData.detailHeight);
+			var (textureWidth, textureHeight) = (DensityTexture.width, DensityTexture.height);
 
-			var (width, height) = (DensityTexture.width, DensityTexture.height);
+
+			var detailMap =
+				TerrainData.GetDetailLayer(0, 0, detailWidth,
+					detailHeight,
+					Layer);
 
 			// var rt = TextureUtility.ToTemporaryRT(DensityTexture, TerrainData.alphamapResolution,
 			// RenderTextureFormat.ARGB32);
@@ -46,21 +47,23 @@ namespace TerrainMixture.Runtime.Streams
 			DetailDensityTexture2D = TextureUtility.SyncReadback(DensityTexture as RenderTexture, TextureFormat.R16);
 			// RenderTexture.ReleaseTemporary(rt);
 
-			var tmpTextureData = DetailDensityTexture2D.GetRawTextureData<ushort>();
+			using var tmpTextureData = DetailDensityTexture2D.GetRawTextureData<ushort>();
 			using var detailTextureData = new NativeArray<ushort>(tmpTextureData, Allocator.Persistent);
 
 			var time = Time.realtimeSinceStartup;
-			var total = TerrainData.detailHeight * TerrainData.detailWidth;
+			var total = detailHeight * detailWidth;
 			var current = 0;
 
+			// Debug.Log($"uploading {total} detail cells");
+
 			// For each pixel in the detail map...
-			for (var y = 0; y < TerrainData.detailHeight; y++)
+			for (var y = 0; y < detailHeight; y++)
 			{
-				for (var x = 0; x < TerrainData.detailWidth; x++)
+				for (var x = 0; x < detailWidth; x++)
 				{
-					var textureX = (float)x / TerrainData.detailWidth * width;
-					var textureY = (float)y / TerrainData.detailHeight * height;
-					var textureIndex = (int)(textureX * width + textureY) % detailTextureData.Length;
+					var textureX = (float)x / detailWidth * textureWidth;
+					var textureY = (float)y / detailHeight * textureHeight;
+					var textureIndex = (int)(textureX * textureWidth + textureY) % detailTextureData.Length;
 					var detailSample = (float)detailTextureData[textureIndex] / ushort.MaxValue;
 
 					// For CoverageMode it holds values 0..255

@@ -2,7 +2,9 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using Mixture;
+using TerrainMixture.Runtime.Behaviours;
 using TerrainMixture.Runtime.Navigation;
+using TerrainMixture.Runtime.Processing;
 using TerrainMixture.Tasks;
 using TerrainMixture.Tasks.Pacing;
 using TerrainMixture.Utils;
@@ -42,14 +44,9 @@ namespace TerrainMixture.Runtime
 			}
 		}
 
-		public static void UpdateTerrain(Terrain terrain, MixtureGraph graph, NavigationSupport navigation)
+		public static IEnumerator UpdateTerrainAsync(ITerrainMixtureTile tile, TerrainTaskParameters requestParams)
 		{
-			CoroutineUtility.StartCoroutine(UpdateTerrainAsync(terrain, graph, navigation));
-		}
-
-		public static IEnumerator UpdateTerrainAsync(Terrain terrain, MixtureGraph graph, NavigationSupport navigation)
-		{
-			var id = terrain.GetInstanceID();
+			var id = requestParams.GetInstanceID();
 			var localGuid = Guid.NewGuid();
 
 			LastGuids[id] = localGuid;
@@ -58,7 +55,7 @@ namespace TerrainMixture.Runtime
 			{
 				previousTask.Cancel();
 				yield return previousTask.Wait();
-				yield return CoroutineUtility.WaitForSeconds(.5f);
+				yield return CoroutineUtility.WaitForSeconds(.33f);
 			}
 
 			if (LastGuids[id] != localGuid)
@@ -68,7 +65,7 @@ namespace TerrainMixture.Runtime
 
 			// Create new
 			using var currentTask = TaskControllerCollection.CreateController(id);
-			using var terrainTask = new TerrainTask(navigation, graph, terrain, currentTask);
+			using var terrainTask = new TerrainTask(requestParams, tile, currentTask);
 			yield return terrainTask.Start();
 		}
 	}

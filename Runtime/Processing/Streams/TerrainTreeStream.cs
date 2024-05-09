@@ -3,14 +3,11 @@ using System.Collections;
 using Mixture.Nodes;
 using TerrainMixture.Tasks;
 using TerrainMixture.Tasks.Pacing;
+using UnityEditor;
 using UnityEngine;
 using UnityEngine.Rendering;
 
-#if UNITY_EDITOR
-using UnityEditor;
-#endif
-
-namespace TerrainMixture.Runtime.Streams
+namespace TerrainMixture.Runtime.Processing.Streams
 {
 	public class TerrainTreeStream : ProgressiveTask
 	{

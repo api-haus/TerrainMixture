@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using TerrainMixture.Runtime.Processing;
 
 namespace TerrainMixture.Runtime
 {

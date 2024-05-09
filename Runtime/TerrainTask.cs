@@ -1,32 +1,35 @@
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
+using JBooth.MicroSplat;
 using Mixture;
 using Mixture.Nodes;
+using TerrainMixture.Runtime.Behaviours;
 using TerrainMixture.Runtime.Navigation;
+using TerrainMixture.Runtime.Processing;
 using TerrainMixture.Tasks;
+using TerrainMixture.Utils;
 using UnityEngine;
 
 namespace TerrainMixture.Runtime
 {
 	public class TerrainTask : ProgressiveTask
 	{
-		readonly NavigationSupport NavigationSupport;
-		readonly MixtureGraph Graph;
-		readonly Terrain Terrain;
-
+		NavigationSupport NavigationSupport => Parameters.navigationSupport;
+		MixtureGraph Graph => Parameters.mixtureGraph;
+		Terrain Terrain => Parameters.terrain;
 		TerrainData TerrainData => Terrain.terrainData;
 
 		int CurrentStep;
 		int TotalSteps;
+		readonly TerrainTaskParameters Parameters;
+		readonly ITerrainMixtureTile Tile;
 
-		public TerrainTask(NavigationSupport support, MixtureGraph sourceGraph, Terrain terrain,
-			TaskController taskController)
-			: base(taskController)
+		public TerrainTask(TerrainTaskParameters requestParams, ITerrainMixtureTile tile, TaskController currentTask) :
+			base(currentTask)
 		{
-			NavigationSupport = support;
-			Terrain = terrain;
-			Graph = sourceGraph;
+			Tile = tile;
+			Parameters = requestParams;
 		}
 
 		protected override IEnumerator Process()
@@ -52,7 +55,7 @@ namespace TerrainMixture.Runtime
 
 			SetupTerrainParameters();
 
-			TerrainData.Clear();
+			Tile.Clear();
 
 			SetupTerrainLayers(splatOutputs);
 
@@ -73,7 +76,11 @@ namespace TerrainMixture.Runtime
 				}
 
 				OnNextStep("Heightmap...");
-				TerrainData.UploadHeightmap(heightOutputNode.heightOutput);
+
+				// We need +1 because edges are copied to stitch terrains together
+				var size = heightOutputNode.heightOutput.width + 1;
+				var rtCopy = TextureUtility.CopyRT(heightOutputNode.heightOutput, RenderTextureFormat.R16, size);
+				Tile.SetCachedHeightmap(rtCopy, false);
 			}
 
 			foreach (var splatOutputNode in splatOutputs)
@@ -84,13 +91,13 @@ namespace TerrainMixture.Runtime
 				}
 
 				OnNextStep("Splat...");
-				TerrainData.UploadTexture(splatOutputNode.splatOutput,
+				Tile.SetCachedTexture(splatOutputNode.splatOutput,
 					TerrainData.AlphamapTextureName,
 					splatOutputNode.splatIndex);
 			}
 
-			TerrainData.UploadTreePrototypes(treeOutputs);
-			TerrainData.UploadDetailPrototypes(detailOutputs);
+			Tile.UploadTreePrototypes(ToTreePrototypes(treeOutputs));
+			Tile.UploadDetailPrototypes(ToDetailPrototypes(detailOutputs));
 			// TerrainData.RefreshPrototypes();
 
 			var treeLayer = 0;
@@ -104,7 +111,7 @@ namespace TerrainMixture.Runtime
 
 				OnNextStep("Trees...");
 
-				yield return TerrainData.UploadTreeInstances(TaskController, treeOutput.LastStableBuffer,
+				yield return Tile.UploadTreeInstances(TaskController, treeOutput.LastStableBuffer,
 					treeOutput.LiveInstancesCount, treeLayer++);
 			}
 
@@ -117,7 +124,7 @@ namespace TerrainMixture.Runtime
 				}
 
 				OnNextStep("Details...");
-				yield return TerrainData.UploadDetailInstances(TaskController, detailOutput.detailOutput, detailLayer++);
+				yield return Tile.UploadDetailInstances(TaskController, detailOutput.detailOutput, detailLayer++);
 			}
 
 			TaskController.Progress((float)CurrentStep / TotalSteps, "Navigation...");
@@ -125,17 +132,51 @@ namespace TerrainMixture.Runtime
 			yield return NavigationTask.GenerateNavMesh(Terrain, TaskController, NavigationSupport);
 
 			OnNextStep("Completed");
+#if MICROSPLAT
+			SetupMicroSplat();
+#else
+			Terrain.materialTemplate = Parameters.materialTemplate;
+#endif
 		}
+
+		static IReadOnlyList<DetailPrototype> ToDetailPrototypes(IReadOnlyList<TerrainDetailsNode> detailOutputs)
+		{
+			var prototypes = new DetailPrototype[detailOutputs.Count];
+
+			for (var i = 0; i < detailOutputs.Count; i++)
+			{
+				var output = detailOutputs[i];
+				prototypes[i] = output.ToDetailPrototype();
+			}
+
+			return prototypes;
+		}
+
+		static IReadOnlyList<TreePrototype> ToTreePrototypes(IReadOnlyList<TerrainTreesNode> treeOutputs)
+		{
+			var prototypes = new TreePrototype[treeOutputs.Count];
+
+			for (var i = 0; i < treeOutputs.Count; i++)
+			{
+				var output = treeOutputs[i];
+				prototypes[i] = output.ToTreePrototype();
+			}
+
+			return prototypes;
+		}
+
+#if MICROSPLAT
+		void SetupMicroSplat()
+		{
+			var mt = Terrain.gameObject.AddComponent<MicroSplatTerrain>();
+			mt.templateMaterial = Parameters.materialTemplate;
+			mt.Sync();
+		}
+#endif
 
 		void SetupTerrainParameters()
 		{
-			var terrainHeight = Graph.GetParameterValue<float>("Terrain Height");
-			var terrainDimensions = Graph.GetParameterValue<float>("Terrain Dimensions");
-			var graphResolution = Graph.settings.width;
-
-			TerrainData.alphamapResolution = graphResolution;
-			TerrainData.heightmapResolution = graphResolution + 1;
-			TerrainData.size = new Vector3(terrainDimensions, terrainHeight, terrainDimensions);
+			Parameters.ApplyToTerrainData(TerrainData);
 		}
 
 		void SetupTerrainLayers(IEnumerable<TerrainSplatOutputNode> splatOutputs)
@@ -143,7 +184,7 @@ namespace TerrainMixture.Runtime
 			var terrainLayers = splatOutputs
 				.OrderBy(x => x.splatIndex)
 				.SelectMany(x => x.terrainLayers).ToArray();
-			TerrainData.UploadTerrainLayers(terrainLayers);
+			Tile.UploadTerrainLayers(terrainLayers);
 		}
 
 		protected override void OnPostProcess()

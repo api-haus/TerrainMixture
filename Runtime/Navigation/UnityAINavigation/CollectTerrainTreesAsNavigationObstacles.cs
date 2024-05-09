@@ -17,7 +17,6 @@ namespace TerrainMixture.Runtime.Navigation.UnityAINavigation
 	/// </summary>
 	public class CollectTerrainTreesAsNavigationObstacles : ProgressiveTask
 	{
-		const int MaxFrameSkip = 4;
 
 		readonly Terrain Terrain;
 		readonly NavMeshBuildSource[] ObstaclePrototypes;

@@ -42,11 +42,13 @@ Sample tree positions from density texture.
 
 		[Output] public ComputeBuffer resultingPositions;
 
+		[FormerlySerializedAs("requestedInstancesPer1000m")]
+		[FormerlySerializedAs("requestedInstances")]
 		[FormerlySerializedAs("maxInstanceCount")]
 		[FormerlySerializedAs("maxSplatCount")]
 		[ShowInInspector]
 		[SerializeField]
-		private int requestedInstances = 256;
+		private int requestedInstancesPer1000M = 256;
 
 		// Grid
 		[Range(0, 2)] public float lambda = 0;
@@ -90,6 +92,12 @@ Sample tree positions from density texture.
 			return res;
 		}
 
+		public float TileArea =>
+			graph.GetParameterValue<float>("Terrain Dimensions");
+
+		public float TileFactor =>
+			(TileArea * TileArea) / 1000f;
+
 		public int MaxSafeBufferSize =>
 			LessOrEqualPot((int)(SystemInfo.maxGraphicsBufferSize / TreeInstanceNative.Stride / 2));
 
@@ -97,9 +105,9 @@ Sample tree positions from density texture.
 			Mathf.Max(
 				1, // at least 1 item or it breaks
 				Mathf.Min(MaxSafeBufferSize,
-					Mathf.NextPowerOfTwo(requestedInstances)));
+					Mathf.NextPowerOfTwo((int)(requestedInstancesPer1000M * TileFactor))));
 
-		public int RequestedInstances => Mathf.Min(requestedInstances, MaxSafeBufferSize);
+		public int RequestedInstances => Mathf.Min((int)(requestedInstancesPer1000M * TileFactor), MaxSafeBufferSize);
 
 		public int LiveInstancesCount =>
 			LastStableBuffer != null && LastStableBuffer.IsValid()

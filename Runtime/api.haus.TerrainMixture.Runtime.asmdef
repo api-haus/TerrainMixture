@@ -9,10 +9,13 @@
     "api.haus.TerrainMixture.Utils",
     "api.haus.TerrainMixture.Authoring",
     "api.haus.TerrainMixture.Nodes",
+    "Unity.Mathematics",
     "api.haus.TerrainMixture.Tasks",
     "Unity.EditorCoroutines.Editor",
     "Unity.AI.Navigation",
-    "AnyPath"
+    "AnyPath",
+    "Unity.RenderPipelines.Core.Runtime",
+    "JBooth.MicroSplat.Core"
   ],
   "includePlatforms": [],
   "excludePlatforms": [],
@@ -26,6 +29,11 @@
       "name": "com.unity.ai.navigation",
       "expression": "1.0.0",
       "define": "UNITY_AI_NAVIGATION"
+    },
+    {
+      "name": "com.jbooth.microsplat.core",
+      "expression": "3.0.0",
+      "define": "MICROSPLAT"
     }
   ],
   "noEngineReferences": false

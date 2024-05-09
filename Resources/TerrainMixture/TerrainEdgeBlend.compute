@@ -1,0 +1,38 @@
+#pragma kernel KBlendBuffers
+
+#define SIDE_TOP 0
+#define SIDE_RIGHT 1
+
+int _Side;
+int _TextureSize;
+
+Texture2D<float4> _CopyEdgeFrom;
+RWTexture2D<float4> _WriteInto;
+
+[numthreads(8,1,1)]
+void KBlendBuffers(uint id : SV_DispatchThreadID)
+{
+    if (_Side == SIDE_RIGHT)
+    {
+        int xA = _TextureSize - 1;
+        int xB = 0;
+        int y = id;
+
+        if (y >= _TextureSize) return;
+
+        _WriteInto[uint2(xA, y)] = _CopyEdgeFrom[uint2(xB, y)];
+        // _WriteInto[uint2(xA, y)] = 1;
+    }
+
+    if (_Side == SIDE_TOP)
+    {
+        int yA = _TextureSize - 1;
+        int yB = 0;
+        int x = id;
+
+        if (x >= _TextureSize) return;
+
+        _WriteInto[uint2(x, yA)] = _CopyEdgeFrom[uint2(x, yB)];
+        // _WriteInto[uint2(x, yA)] = 1;
+    }
+}

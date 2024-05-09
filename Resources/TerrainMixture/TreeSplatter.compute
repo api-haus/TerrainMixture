@@ -139,7 +139,7 @@ float3 NormalizeToBounds(float3 position)
     position.xz = frac(position.xz);
 
     // IDK why it needs to multiply by 2. I tried different Linear/SRGB settings, will revisit this issue later...
-    position.y = _HeightMap[uint2(position.xz * _HeightMapResolution)].r * 2.;
+    position.y = _HeightMap[uint2(float2(position.x, 1. - position.z) * _HeightMapResolution)].r * 2.;
 
     return position;
 }

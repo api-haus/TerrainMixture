@@ -2,9 +2,8 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
-using Mixture;
 using Mixture.Nodes;
-using TerrainMixture.Runtime.Streams;
+using TerrainMixture.Runtime.Processing.Streams;
 using TerrainMixture.Tasks;
 using TerrainMixture.Utils;
 using UnityEngine;
@@ -17,7 +16,7 @@ namespace TerrainMixture.Runtime
 			int textureIndex)
 		{
 			var ct = RenderTexture.active;
-			var rt = TextureUtility.CopyRT(texture, terrainData.alphamapResolution,
+			var rt = TextureUtility.CopyRT(texture as RenderTexture,
 				RenderTextureFormat.ARGB32);
 			RenderTexture.active = rt;
 
@@ -34,14 +33,14 @@ namespace TerrainMixture.Runtime
 		public static void UploadHeightmap(this TerrainData terrainData, Texture texture)
 		{
 			var ct = RenderTexture.active;
-			var rt = TextureUtility.CopyRT(texture, terrainData.heightmapResolution,
+			var rt = TextureUtility.CopyRT(texture as RenderTexture,
 				RenderTextureFormat.R16);
 			RenderTexture.active = rt;
 
-			var region = new RectInt(0, 0, rt.width, rt.height);
+			var sourceRect = new RectInt(0, 0, rt.width, rt.height);
 			var dest = new Vector2Int(0, 0);
 
-			terrainData.CopyActiveRenderTextureToHeightmap(region, dest,
+			terrainData.CopyActiveRenderTextureToHeightmap(sourceRect, dest,
 				TerrainHeightmapSyncControl.HeightAndLod);
 			terrainData.SyncHeightmap();
 
@@ -54,20 +53,6 @@ namespace TerrainMixture.Runtime
 			terrainData.terrainLayers = layers.ToArray();
 		}
 
-		public static void UploadDetailPrototypes(this TerrainData terrainData,
-			IReadOnlyList<TerrainDetailsNode> detailOutputs)
-		{
-			var prototypes = new DetailPrototype[detailOutputs.Count];
-
-			for (var i = 0; i < detailOutputs.Count; i++)
-			{
-				var output = detailOutputs[i];
-				prototypes[i] = output.ToDetailPrototype();
-			}
-
-			terrainData.detailPrototypes = prototypes;
-		}
-
 		public static void Clear(this TerrainData terrainData)
 		{
 			terrainData.SetTreeInstances(Array.Empty<TreeInstance>(), false);
@@ -75,17 +60,15 @@ namespace TerrainMixture.Runtime
 			terrainData.detailPrototypes = Array.Empty<DetailPrototype>();
 		}
 
-		public static void UploadTreePrototypes(this TerrainData terrainData, IReadOnlyList<TerrainTreesNode> treeOutputs)
+		public static void UploadDetailPrototypes(this TerrainData terrainData,
+			IEnumerable<DetailPrototype> detailPrototypes)
 		{
-			var prototypes = new TreePrototype[treeOutputs.Count];
+			terrainData.detailPrototypes = detailPrototypes.ToArray();
+		}
 
-			for (var i = 0; i < treeOutputs.Count; i++)
-			{
-				var output = treeOutputs[i];
-				prototypes[i] = output.ToTreePrototype();
-			}
-
-			terrainData.treePrototypes = prototypes;
+		public static void UploadTreePrototypes(this TerrainData terrainData, IEnumerable<TreePrototype> treePrototypes)
+		{
+			terrainData.treePrototypes = treePrototypes.ToArray();
 		}
 
 		public static IEnumerator UploadTreeInstances(this TerrainData terrainData, TaskController taskController,

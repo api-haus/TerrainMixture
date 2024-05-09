@@ -8,6 +8,8 @@ namespace TerrainMixture.Tasks.Pacing
 {
 	public static class CoroutineUtility
 	{
+		const float OptimalTime = 1f / 60f;
+
 		public static bool FrameSkip(ref float time, int maxFrameSkip = -1)
 		{
 			if (maxFrameSkip == -1)
@@ -16,7 +18,7 @@ namespace TerrainMixture.Tasks.Pacing
 			}
 
 			var sinceLastFrameSkip = Time.realtimeSinceStartup - time;
-			var isLate = sinceLastFrameSkip >= maxFrameSkip * Time.fixedDeltaTime;
+			var isLate = sinceLastFrameSkip >= maxFrameSkip * OptimalTime;
 
 			if (isLate)
 			{

@@ -4,7 +4,8 @@ namespace TerrainMixture.Utils
 
 	public static class TextureUtility
 	{
-		public static Texture2D SyncReadback(RenderTexture source, TextureFormat format, bool linear = true)
+		public static Texture2D SyncReadback(RenderTexture source, TextureFormat format = TextureFormat.ARGB32,
+			bool linear = true)
 		{
 			var ct = RenderTexture.active;
 			RenderTexture.active = source;
@@ -19,17 +20,30 @@ namespace TerrainMixture.Utils
 			return tex2D;
 		}
 
-
-		public static RenderTexture CopyRT(Texture from)
+		public static RenderTexture CopyRT(RenderTexture from)
 		{
-			return CopyRT(from, from.width, RenderTextureFormat.ARGB32);
+			return CopyRT(from, from.format);
 		}
 
-		public static RenderTexture CopyRT(Texture from, int resolution, RenderTextureFormat format)
+		public static RenderTexture CopyRT(RenderTexture from, RenderTextureFormat format)
 		{
-			var rt = RenderTexture.GetTemporary(resolution, resolution, 0, format);
+			return CopyRT(from, format, from.width);
+		}
+
+		public static RenderTexture CopyRT(RenderTexture from, RenderTextureFormat format, int size)
+		{
+			var desc = from.descriptor;
+			desc.colorFormat = format;
+			desc.width = size;
+			desc.height = size;
+			var rt = RenderTexture.GetTemporary(desc);
 			Graphics.Blit(from, rt);
 			return rt;
+		}
+
+		public static RenderTexture CopyRTReadWrite(RenderTexture from)
+		{
+			return ComputeShaderTextureCopy.CopyAsReadWrite(from);
 		}
 	}
 }
